@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract Job is AccessControl {
+    bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
+    bytes32 public constant TUTOR_ROLE = keccak256("TUTOR_ROLE");
+
     event ProfileCreated(address indexed caller);
     event DetailsUploaded(address indexed caller);
     event DetailsUpdated(address indexed caller);
-
-    bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
-    bytes32 public constant TUTOR_ROLE = keccak256("TUTOR_ROLE");
 
     enum Category {
         None,
@@ -54,6 +54,8 @@ contract Job is AccessControl {
         string userFirstName;
         string userLastName;
         string[] userSkills; //array of user skills
+        // mapping(address => JobExperience) _userExperience;
+        // mapping(address => Education) _userEducationalBackground;
         JobExperience _jobexperience;
         Education _education;
     }
@@ -62,7 +64,7 @@ contract Job is AccessControl {
     //mapping(address => bool) hasProfile;
     mapping(address => bool) public hasUploadedDetails;
 
-    ///////////////ERRORS////////////////
+    ///////////////ERrORS////////////////
     error notAccess();
     error UpdateDetails();
     error UploadDetails();
@@ -132,6 +134,8 @@ contract Job is AccessControl {
 
         //JOB EXPERIENCE
         //Not checking for empty input here because some users might not have a job experience
+        //JobExperience storage experience = _userDetails[msg.sender]
+        // ._userExperience[msg.sender]; // get the job experience struct associated with the caller's address
         JobExperience memory experience;
         experience.category = _category; // update the category field
 
@@ -145,6 +149,8 @@ contract Job is AccessControl {
         UI._jobexperience = experience; // write the job experience back to the mapping
 
         //EDUCATIONAL BACKGROUND
+        // Education storage education = _userDetails[msg.sender]
+        //     ._userEducationalBackground[msg.sender]; // get the education struct associated with the caller's address
         Education memory education;
         education.degree = _degree; // update the degree field
         education.institutionName = _institutionName; // update the institution name field
@@ -193,6 +199,9 @@ contract Job is AccessControl {
 
         UserInfo storage UI = _userDetails[msg.sender];
 
+        // JobExperience storage experience = _userDetails[msg.sender]
+        //     ._userExperience[msg.sender]; // get the job experience struct associated with the caller's address
+
         JobExperience memory experience;
         experience.category = _category; // update the category field
         experience.level = _level; // update the level field
@@ -218,6 +227,8 @@ contract Job is AccessControl {
 
         UserInfo storage UI = _userDetails[msg.sender];
 
+        // Education storage education = _userDetails[msg.sender]
+        //     ._userEducationalBackground[msg.sender]; // get the education struct associated with the caller's address
         Education memory education;
         education.degree = _degree; // update the degree field
         education.institutionName = _institutionName; // update the institution name field
@@ -247,4 +258,6 @@ contract Job is AccessControl {
         UserInfo storage UI = _userDetails[userAddr];
         return UI;
     }
+
+  
 }
