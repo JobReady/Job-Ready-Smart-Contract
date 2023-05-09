@@ -49,4 +49,71 @@ contract SkillTest {
         questionUploaded[_questionType][_questionNumber] = true;
         totalQuestions[_questionType] += 1;
     }
+
+    function changeCorrectOptionIndex(
+        uint256 _questionType,
+        uint256 _questionNumber,
+        uint256 _correctOptionIndex
+    ) external {
+        questions[_questionType][_questionNumber]
+            .correctOptionIndex = _correctOptionIndex;
+    }
+
+    function answerQuestion(
+        uint256 _questionType,
+        uint256 _questionNumber,
+        uint256 _chosenOptionIndex
+    ) external returns (bool) {
+        require(
+            questionAnswered[msg.sender][_questionType][_questionNumber] ==
+                false,
+            "question already answer"
+        );
+        require(
+            _chosenOptionIndex <
+                questions[_questionType][_questionNumber].options.length,
+            "Chosen option index must be less than the number of options."
+        );
+        questionAnswered[msg.sender][_questionType][_questionNumber] = true;
+        if (
+            _chosenOptionIndex ==
+            questions[_questionType][_questionNumber].correctOptionIndex
+        ) {
+            rightPicked[msg.sender][_questionType] += 1;
+            return true;
+        }
+        return false;
+    }
+
+    //access control
+    function retake(
+        address _participantAddress,
+        uint256 _questionType
+    ) external {
+        uint total = totalQuestions[_questionType];
+        for (
+            uint256 _questionNumber;
+            _questionNumber < total;
+            _questionNumber++
+        ) {
+            questionAnswered[_participantAddress][_questionType][
+                _questionNumber
+            ] = false;
+        }
+    }
+
+    //get all question in a Category
+    // access control
+    function getAllquestion(
+        uint256 _questionType
+    ) external view returns (Question[] memory) {
+        uint total = totalQuestions[_questionType];
+        Question[] memory allQuestion = new Question[](total);
+
+        for (uint256 i; i < total; i++) {
+            allQuestion[i] = questions[_questionType][i + 1];
+        }
+
+        return allQuestion;
+    }
 }
