@@ -7,7 +7,7 @@ interface IJobReadyNFT {
     function awardUser(address user) external returns (uint256);
 }
 
-contract JobReady is AccessControl {
+contract Job is AccessControl {
     event ProfileCreated(address indexed caller);
     event DetailsUploaded(address indexed caller);
     event DetailsUpdated(address indexed caller);
@@ -284,6 +284,7 @@ contract JobReady is AccessControl {
     error ChosenOptionIDMustBeLessThanOptions();
     error AddressZero();
     error FeedBackCannotBeEmpty();
+    error AnswerALLQuestion();
 
     /**
      *
@@ -394,6 +395,8 @@ contract JobReady is AccessControl {
                 _questionNumber
             ] = false;
         }
+
+        feedback[_participantAddress][_questionType] = "No question answered";
     }
 
     /**
@@ -486,25 +489,52 @@ contract JobReady is AccessControl {
     function getResult(
         address _participantAddress,
         uint256 _questionType
-    ) external view returns (uint256) {
-        return rightPicked[_participantAddress][_questionType];
+    ) external returns (uint256, string memory) {
+        uint rightPick = rightPicked[_participantAddress][_questionType];
+        uint256 totalQuestion = totalQuestions[_questionType];
+        if (
+            questionAnswered[msg.sender][_questionType][totalQuestion] == true
+        ) {
+            string memory _feedback = provideFeedback(
+                _participantAddress,
+                _questionType,
+                rightPick
+            );
+            return (rightPick, _feedback);
+        } else {
+            revert AnswerALLQuestion();
+        }
     }
 
     function provideFeedback(
         address _participantAddress,
         uint256 _questionType,
-        string memory _feedback
-    ) external {
-        if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
-        if (bytes(_feedback).length == 0) revert FeedBackCannotBeEmpty();
-
+        uint256 _rightPick
+    ) internal returns (string memory) {
         uint256 totalQuestion = totalQuestions[_questionType];
-        uint256 _participantResult = rightPicked[_participantAddress][
-            _questionType
-        ];
+        uint percentage = (_rightPick * 100) / totalQuestion;
 
-        feedback[_participantAddress][_questionType] = _feedback;
+        if (percentage >= 100) {
+            feedback[_participantAddress][_questionType] = "Excellent";
+        } else if (percentage >= 70) {
+            feedback[_participantAddress][_questionType] = "Very Good";
+        } else if (percentage >= 50) {
+            feedback[_participantAddress][_questionType] = "Good";
+        } else if (percentage >= 30) {
+            feedback[_participantAddress][_questionType] = "Fair";
+        } else {
+            feedback[_participantAddress][_questionType] = "Poor";
+        }
 
         emit FeedbackProvided();
+
+        return feedback[_participantAddress][_questionType];
+    }
+
+    function getFeedback(
+        address _participantAddress,
+        uint256 _questionType
+    ) external view returns (string memory) {
+        return feedback[_participantAddress][_questionType];
     }
 }
