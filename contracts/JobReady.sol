@@ -9,8 +9,6 @@ interface IJobReadyNFT {
 
 contract Job is AccessControl {
     event ProfileCreated(address indexed caller);
-    event DetailsUploaded(address indexed caller);
-    event DetailsUpdated(address indexed caller);
 
     bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
     bytes32 public constant TUTOR_ROLE = keccak256("TUTOR_ROLE");
@@ -26,18 +24,17 @@ contract Job is AccessControl {
         BE // Blockchain engineering
     }
 
-    enum Level {
-        junior, //can be intern
-        intermediate,
-        senior
-    }
+    // enum Level {
+    //     junior, //can be intern
+    //     intermediate,
+    //     senior
+    // }
 
     struct JobExperience {
         uint32 startDate;
         uint32 endDate;
         string position;
         Category category;
-        Level level;
         string JobDescription;
     }
 
@@ -56,11 +53,19 @@ contract Job is AccessControl {
         string userFirstName;
         string userLastName;
         string[] userSkills; //array of user skills
-        // mapping(address => JobExperience) _userExperience;
-        // mapping(address => Education) _userEducationalBackground;
         JobExperience _jobexperience;
         Education _education;
     }
+
+    struct TutorInfo {
+        address tutorAddr;
+        uint16 yearOfExperience;
+        //Level level;
+        Category category;
+    }
+
+    mapping(address => TutorInfo) _tutordetails;
+    mapping(address => bool) hasRegistered;
 
     mapping(address => UserInfo) _userDetails;
     //mapping(address => bool) hasProfile;
@@ -81,12 +86,33 @@ contract Job is AccessControl {
     error InvalidCaterogy();
     error CreateProfile();
     error InvaliDate();
+    error AlreadyRegistered();
 
     IJobReadyNFT nftAddr; //address of the NFT contract
 
     constructor(IJobReadyNFT _nftAddr) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         nftAddr = _nftAddr;
+    }
+
+    //tutor registration
+    function tutorRegistration(Category _category) external {
+        if (hasRegistered[msg.sender] == true) {
+            revert AlreadyRegistered();
+        }
+        TutorInfo storage tutor = _tutordetails[msg.sender];
+        tutor.tutorAddr = msg.sender;
+        tutor.category = _category;
+        //tutor.level = _level;
+
+        hasRegistered[msg.sender] = true;
+        _setupRole(TUTOR_ROLE, msg.sender);
+    }
+
+    function getTutorInfo(
+        address _user
+    ) external view returns (TutorInfo memory) {
+        return _tutordetails[_user];
     }
 
     //function for user to create a profile on JobReady
@@ -119,7 +145,6 @@ contract Job is AccessControl {
 
     function uploadDetails(
         Category _category,
-        Level _level,
         string memory _position,
         string memory _jobDescription,
         uint32 _startDate,
@@ -141,8 +166,6 @@ contract Job is AccessControl {
         //Not checking for empty input here because some users might not have a job experience
         JobExperience memory experience;
         experience.category = _category; // update the category field
-
-        experience.level = _level; // update the level field
         experience.position = _position; // update the position field
         experience.JobDescription = _jobDescription; // update the job description field
         experience.startDate = _startDate; // update the start date field
@@ -159,8 +182,6 @@ contract Job is AccessControl {
         UI._education = education; // write the updated education back to the mapping
 
         hasUploadedDetails[msg.sender] = true;
-
-        emit DetailsUploaded(msg.sender);
     }
 
     function updateContactInfo(
@@ -180,14 +201,11 @@ contract Job is AccessControl {
         UI.userFirstName = _newFirstName;
         UI.userLastName = _newLastName;
         UI.userSkills = _addSkills;
-
-        emit DetailsUpdated(msg.sender);
     }
 
     //function for user to update their job experience
     function updateJobExperience(
         Category _category,
-        Level _level,
         string memory _position,
         string memory _jobDescription,
         uint32 _startDate,
@@ -200,14 +218,11 @@ contract Job is AccessControl {
 
         JobExperience memory experience;
         experience.category = _category; // update the category field
-        experience.level = _level; // update the level field
         experience.position = _position; // update the position field
         experience.JobDescription = _jobDescription; // update the job description field
         experience.startDate = _startDate; // update the start date field
         experience.endDate = _endDate; // update the end date field
         UI._jobexperience = experience; // write the updated job experience back to the mapping
-
-        emit DetailsUpdated(msg.sender);
     }
 
     //function for user to update their education background
@@ -231,8 +246,6 @@ contract Job is AccessControl {
         education.startDate = _startDate; // update the start date field
         education.endDate = _endDate; // update the end date field
         UI._education = education;
-
-        emit DetailsUpdated(msg.sender);
     }
 
     // function to check if a user has created a profile on the JobReady App
@@ -253,6 +266,8 @@ contract Job is AccessControl {
         UserInfo storage UI = _userDetails[userAddr];
         return UI;
     }
+
+    ////////////TUTOR APPLICATION////////////
 
     /////////////SKILL TEST/////////////
     event FeedbackProvided();
