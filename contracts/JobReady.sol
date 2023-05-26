@@ -61,11 +61,12 @@ contract Job is AccessControl {
         address tutorAddr;
         uint16 yearOfExperience;
         //Level level;
+        bool approve;
         Category category;
     }
 
     mapping(address => TutorInfo) _tutordetails;
-    mapping(address => bool) hasRegistered;
+    mapping(address => bool) public hasRegistered;
 
     mapping(address => UserInfo) _userDetails;
     //mapping(address => bool) hasProfile;
@@ -104,9 +105,19 @@ contract Job is AccessControl {
         tutor.tutorAddr = msg.sender;
         tutor.category = _category;
         //tutor.level = _level;
-
         hasRegistered[msg.sender] = true;
-        _setupRole(TUTOR_ROLE, msg.sender);
+    }
+
+    function validateTutor(address _tutorAddress) external {
+        if (hasRole(DEFAULT_ADMIN_ROLE, msg.sender) == false)
+            revert notAccess();
+        if (hasRegistered[_tutorAddress] == false) {
+            revert CreateProfile();
+        }
+        TutorInfo storage tutor = _tutordetails[_tutorAddress];
+        tutor.approve = true;
+        //tutor.level = _level;
+        _setupRole(TUTOR_ROLE, _tutorAddress);
     }
 
     function getTutorInfo(
@@ -115,8 +126,9 @@ contract Job is AccessControl {
         return _tutordetails[_user];
     }
 
-    //function for user to create a profile on JobReady
-
+    /**
+     * @dev function to create profile on the JobReady App
+     */
     function createProfile(
         uint64 _contact,
         string memory _email,
@@ -143,6 +155,9 @@ contract Job is AccessControl {
         emit ProfileCreated(msg.sender);
     }
 
+    /**
+     * @dev function for user to upload their details
+     */
     function uploadDetails(
         Category _category,
         string memory _position,
@@ -184,6 +199,9 @@ contract Job is AccessControl {
         hasUploadedDetails[msg.sender] = true;
     }
 
+    /**
+     * @dev function for user to update their contact info
+     */
     function updateContactInfo(
         uint32 _contact,
         string memory _newEmail,
@@ -293,6 +311,7 @@ contract Job is AccessControl {
     error QuestionNumAlreadyFilled();
     error QuestionMustHaveAtLeast2Options();
     error CorrectOptionIDMustBeLessThanOptions();
+    error WrongQuestion();
     error NotTutor();
     error NotARegisteredUser();
     error QuestionAlreadyAnswered();
@@ -317,17 +336,17 @@ contract Job is AccessControl {
         uint256 _correctOptionIndex
     ) external {
         if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
-        if (questionUploaded[_questionType][_questionNumber] == true) {
+        require(
+            Job.Category(_questionType) == _tutordetails[msg.sender].category,
+            "!Category"
+        );
+        if (questionUploaded[_questionType][_questionNumber] == true)
             revert QuestionNumAlreadyFilled();
-        }
 
-        if (_options.length < 2) {
-            revert QuestionMustHaveAtLeast2Options();
-        }
+        if (_options.length < 2) revert QuestionMustHaveAtLeast2Options();
 
-        if (_correctOptionIndex > _options.length) {
+        if (_correctOptionIndex > _options.length)
             revert CorrectOptionIDMustBeLessThanOptions();
-        }
 
         questions[_questionType][_questionNumber] = Question(
             _questionText,
@@ -351,10 +370,19 @@ contract Job is AccessControl {
         uint256 _correctOptionIndex
     ) external {
         if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
+        require(
+            Job.Category(_questionType) == _tutordetails[msg.sender].category,
+            "!Category"
+        );
+        if (questionUploaded[_questionType][_questionNumber] == false)
+            revert WrongQuestion();
         questions[_questionType][_questionNumber]
             .correctOptionIndex = _correctOptionIndex;
     }
 
+    /**
+     * dev: function for a user to answer a question
+     */
     function answerQuestion(
         uint256 _questionType,
         uint256 _questionNumber,
@@ -362,27 +390,27 @@ contract Job is AccessControl {
     ) external returns (bool) {
         if (hasRole(USER_ROLE, msg.sender) == false)
             revert NotARegisteredUser();
+        if (questionUploaded[_questionType][_questionNumber] == false)
+            revert WrongQuestion();
 
         if (
             questionAnswered[msg.sender][_questionType][_questionNumber] == true
-        ) {
-            revert QuestionAlreadyAnswered();
-        }
+        ) revert QuestionAlreadyAnswered();
         if (
             _chosenOptionIndex >
             questions[_questionType][_questionNumber].options.length
-        ) {
-            revert ChosenOptionIDMustBeLessThanOptions();
-        }
+        ) revert ChosenOptionIDMustBeLessThanOptions();
 
         questionAnswered[msg.sender][_questionType][_questionNumber] = true;
+        uint256 totalQuestion = totalQuestions[_questionType];
 
+        if (questionAnswered[msg.sender][_questionType][totalQuestion] == true)
+            nftAddr.awardUser(msg.sender);
         if (
             _chosenOptionIndex ==
             questions[_questionType][_questionNumber].correctOptionIndex
         ) {
             rightPicked[msg.sender][_questionType] += 1;
-            nftAddr.awardUser(msg.sender);
             return true;
         } else {
             return false;
@@ -397,6 +425,10 @@ contract Job is AccessControl {
         uint256 _questionType
     ) external {
         if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
+        require(
+            Job.Category(_questionType) == _tutordetails[msg.sender].category,
+            "!Category"
+        );
         if (_participantAddress == address(0)) revert AddressZero();
 
         uint256 total = totalQuestions[_questionType];
@@ -416,7 +448,7 @@ contract Job is AccessControl {
 
     /**
      *
-     * @dev function to get all Question details in a category
+     * @dev function to get all Question details(descriptions, options, and right option) in a category
      */
     function getAllQuestions(
         uint256 _questionType
@@ -434,6 +466,9 @@ contract Job is AccessControl {
         return allQuestion;
     }
 
+    /**
+     * @dev function to get all questions description and options in a particular category
+     */
     function getAllQuestionsForAUser(
         uint256 _questionType
     ) external view returns (string[] memory, string[][] memory) {
@@ -450,6 +485,9 @@ contract Job is AccessControl {
         return (allQuestion, option);
     }
 
+    /**
+     * @dev function to get a questions description and options
+     */
     function getFullQuestion(
         uint256 _questionType,
         uint256 _questionNumber
@@ -487,6 +525,9 @@ contract Job is AccessControl {
         return questions[_questionType][_questionNumber].questionText;
     }
 
+    /**
+     * @dev function to get question options
+     */
     function getOptions(
         uint256 _questionType,
         uint256 _questionNumber
@@ -494,13 +535,20 @@ contract Job is AccessControl {
         return questions[_questionType][_questionNumber].options;
     }
 
+    /**
+     * @dev function to get the correct option number
+     */
     function getCorrectOptionIndex(
         uint256 _questionType,
         uint256 _questionNumber
     ) public view returns (uint256) {
+        if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
         return questions[_questionType][_questionNumber].correctOptionIndex;
     }
 
+    /**
+     * @dev function to get Result if a test question has been fully answered
+     */
     function getResult(
         address _participantAddress,
         uint256 _questionType
@@ -521,6 +569,9 @@ contract Job is AccessControl {
         }
     }
 
+    /**
+     * @dev An internal function to calculate feedback based on amount of right question
+     */
     function provideFeedback(
         address _participantAddress,
         uint256 _questionType,
@@ -528,28 +579,36 @@ contract Job is AccessControl {
     ) internal returns (string memory) {
         uint256 totalQuestion = totalQuestions[_questionType];
         uint percentage = (_rightPick * 100) / totalQuestion;
-
-        if (percentage >= 100) {
-            feedback[_participantAddress][_questionType] = "Excellent";
-        } else if (percentage >= 70) {
-            feedback[_participantAddress][_questionType] = "Very Good";
-        } else if (percentage >= 50) {
-            feedback[_participantAddress][_questionType] = "Good";
-        } else if (percentage >= 30) {
-            feedback[_participantAddress][_questionType] = "Fair";
-        } else {
+        if (percentage <= 30)
             feedback[_participantAddress][_questionType] = "Poor";
-        }
+        if (percentage >= 30)
+            feedback[_participantAddress][_questionType] = "Fair";
+        if (percentage >= 50)
+            feedback[_participantAddress][_questionType] = "Good";
+        if (percentage >= 70)
+            feedback[_participantAddress][_questionType] = "Very Good";
+        if (percentage >= 100)
+            feedback[_participantAddress][_questionType] = "Excellent";
 
         emit FeedbackProvided();
 
         return feedback[_participantAddress][_questionType];
     }
 
+    /**
+     * @dev function to get feedback if a test question has been fully answered
+     */
     function getFeedback(
         address _participantAddress,
         uint256 _questionType
     ) external view returns (string memory) {
-        return feedback[_participantAddress][_questionType];
+        uint256 totalQuestion = totalQuestions[_questionType];
+        if (
+            questionAnswered[msg.sender][_questionType][totalQuestion] == true
+        ) {
+            return feedback[_participantAddress][_questionType];
+        } else {
+            revert AnswerALLQuestion();
+        }
     }
 }
