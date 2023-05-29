@@ -60,6 +60,8 @@ contract Job is AccessControl {
         address tutor;
     }
 
+    Tutorial[] allTutorials;
+
     enum Status {
         Pending,
         Booked,
@@ -205,6 +207,11 @@ contract Job is AccessControl {
             tutor: msg.sender
         });
         tutor.tutorials.push(newTutorial);
+        allTutorials.push(newTutorial);
+    }
+
+    function getAllTutorials() external view returns (Tutorial[] memory) {
+        return allTutorials;
     }
 
     function createInterviewSlot(
