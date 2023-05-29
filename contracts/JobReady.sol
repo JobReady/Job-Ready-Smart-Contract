@@ -24,26 +24,10 @@ contract Job is AccessControl {
         BE // Blockchain engineering
     }
 
-    // enum Level {
-    //     junior, //can be intern
-    //     intermediate,
-    //     senior
-    // }
-
-    struct JobExperience {
-        uint32 startDate;
-        uint32 endDate;
-        string position;
-        Category category;
-        string JobDescription;
-    }
-
-    struct Education {
-        uint32 startDate;
-        uint32 endDate;
-        string degree;
-        string institutionName;
-        string field_of_study;
+    enum Level {
+        junior, //can be intern
+        intermediate,
+        senior
     }
 
     struct UserInfo {
@@ -52,17 +36,41 @@ contract Job is AccessControl {
         string emailAddress; //not necessary though
         string userFirstName;
         string userLastName;
-        string[] userSkills; //array of user skills
-        JobExperience _jobexperience;
-        Education _education;
+        string[] userSkills; //array of user skill
     }
 
     struct TutorInfo {
-        address tutorAddr;
-        uint16 yearOfExperience;
-        //Level level;
-        bool approve;
+        string firstName;
+        string lastName;
+        string experience;
         Category category;
+        address tutorAddr;
+        Level level;
+        bool approve;
+        Tutorial[] tutorials;
+        InterviewSlot[] interviewSlots;
+    }
+
+    struct Tutorial {
+        string tutorialName;
+        string tutorialLink;
+        string tutorialDesc;
+        uint256 tutorialPrice;
+        Category category;
+        address tutor;
+    }
+
+    enum Status {
+        Pending,
+        Booked,
+        Ongoing,
+        Done
+    }
+
+    struct InterviewSlot {
+        string date;
+        uint256 time;
+        Status status;
     }
 
     mapping(address => TutorInfo) _tutordetails;
@@ -71,11 +79,6 @@ contract Job is AccessControl {
     mapping(address => UserInfo) _userDetails;
     //mapping(address => bool) hasProfile;
     mapping(address => bool) public hasUploadedDetails;
-
-    modifier dateCheck(uint32 _startDate, uint32 _endDate) {
-        if (_startDate > _endDate) revert InvaliDate();
-        _;
-    }
 
     ///////////////ERRORS////////////////
     error notAccess();
@@ -97,18 +100,25 @@ contract Job is AccessControl {
     }
 
     //tutor registration
-    function tutorRegistration(Category _category) external {
+    function tutorRegistration(
+        string calldata _firstName,
+        string calldata _lastName,
+        string calldata _experience,
+        Category _category
+    ) external {
         if (hasRegistered[msg.sender] == true) {
             revert AlreadyRegistered();
         }
         TutorInfo storage tutor = _tutordetails[msg.sender];
+        tutor.firstName = _firstName;
+        tutor.lastName = _lastName;
         tutor.tutorAddr = msg.sender;
         tutor.category = _category;
-        //tutor.level = _level;
+        tutor.experience = _experience;
         hasRegistered[msg.sender] = true;
     }
 
-    function validateTutor(address _tutorAddress) external {
+    function validateTutor(address _tutorAddress, Level _level) external {
         if (hasRole(DEFAULT_ADMIN_ROLE, msg.sender) == false)
             revert notAccess();
         if (hasRegistered[_tutorAddress] == false) {
@@ -116,7 +126,7 @@ contract Job is AccessControl {
         }
         TutorInfo storage tutor = _tutordetails[_tutorAddress];
         tutor.approve = true;
-        //tutor.level = _level;
+        tutor.level = _level;
         _setupRole(TUTOR_ROLE, _tutorAddress);
     }
 
@@ -156,50 +166,6 @@ contract Job is AccessControl {
     }
 
     /**
-     * @dev function for user to upload their details
-     */
-    function uploadDetails(
-        Category _category,
-        string memory _position,
-        string memory _jobDescription,
-        uint32 _startDate,
-        uint32 _endDate,
-        string memory _degree,
-        string memory _institutionName,
-        string memory _fieldOfStudy,
-        uint32 _startDateEdu,
-        uint32 _endDateEdu
-    ) external {
-        if (hasRole(USER_ROLE, msg.sender) == false) revert CreateProfile();
-        if (hasUploadedDetails[msg.sender] == true) revert UpdateDetails();
-        if (_startDate > _endDate && _startDateEdu > _endDateEdu)
-            revert InvaliDate();
-
-        UserInfo storage UI = _userDetails[msg.sender];
-
-        //JOB EXPERIENCE
-        //Not checking for empty input here because some users might not have a job experience
-        JobExperience memory experience;
-        experience.category = _category; // update the category field
-        experience.position = _position; // update the position field
-        experience.JobDescription = _jobDescription; // update the job description field
-        experience.startDate = _startDate; // update the start date field
-        experience.endDate = _endDate; // update the end date field
-        UI._jobexperience = experience; // write the job experience back to the mapping
-
-        //EDUCATIONAL BACKGROUND
-        Education memory education;
-        education.degree = _degree; // update the degree field
-        education.institutionName = _institutionName; // update the institution name field
-        education.field_of_study = _fieldOfStudy; // update the field of study field
-        education.startDate = _startDateEdu; // update the start date field
-        education.endDate = _endDateEdu; // update the end date field
-        UI._education = education; // write the updated education back to the mapping
-
-        hasUploadedDetails[msg.sender] = true;
-    }
-
-    /**
      * @dev function for user to update their contact info
      */
     function updateContactInfo(
@@ -221,49 +187,52 @@ contract Job is AccessControl {
         UI.userSkills = _addSkills;
     }
 
-    //function for user to update their job experience
-    function updateJobExperience(
-        Category _category,
-        string memory _position,
-        string memory _jobDescription,
-        uint32 _startDate,
-        uint32 _endDate
-    ) external dateCheck(_startDate, _endDate) {
-        if (hasRole(USER_ROLE, msg.sender) == false) revert CreateProfile();
-        if (hasUploadedDetails[msg.sender] == false) revert UploadDetails();
-
-        UserInfo storage UI = _userDetails[msg.sender];
-
-        JobExperience memory experience;
-        experience.category = _category; // update the category field
-        experience.position = _position; // update the position field
-        experience.JobDescription = _jobDescription; // update the job description field
-        experience.startDate = _startDate; // update the start date field
-        experience.endDate = _endDate; // update the end date field
-        UI._jobexperience = experience; // write the updated job experience back to the mapping
+    function createTutorial(
+        string memory _tutorialName,
+        string memory _tutorialLink,
+        string memory _tutorialDesc,
+        uint256 _tutorialPrice,
+        Category _category
+    ) external {
+        if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
+        TutorInfo storage tutor = _tutordetails[msg.sender];
+        Tutorial memory newTutorial = Tutorial({
+            tutorialName: _tutorialName,
+            tutorialLink: _tutorialLink,
+            tutorialDesc: _tutorialDesc,
+            tutorialPrice: _tutorialPrice,
+            category: _category,
+            tutor: msg.sender
+        });
+        tutor.tutorials.push(newTutorial);
     }
 
-    //function for user to update their education background
-    function updateEducation(
-        string memory _degree,
-        string memory _institutionName,
-        string memory _fieldOfStudy,
-        uint32 _startDate,
-        uint32 _endDate
-    ) external dateCheck(_startDate, _endDate) {
-        if (hasRole(USER_ROLE, msg.sender) == false) revert CreateProfile();
-        if (hasUploadedDetails[msg.sender] == false) revert UploadDetails();
+    function createInterviewSlot(
+        string memory _date,
+        uint256 _time,
+        Status _status
+    ) external {
+        if (hasRole(TUTOR_ROLE, msg.sender) == false) revert NotTutor();
+        TutorInfo storage tutor = _tutordetails[msg.sender];
+        InterviewSlot memory newInterviewSlot = InterviewSlot({
+            date: _date,
+            time: _time,
+            status: _status
+        });
 
-        UserInfo storage UI = _userDetails[msg.sender];
+        tutor.interviewSlots.push(newInterviewSlot);
+    }
 
-        // Education storage education = _userDetails[msg.sender]
-        Education memory education;
-        education.degree = _degree; // update the degree field
-        education.institutionName = _institutionName; // update the institution name field
-        education.field_of_study = _fieldOfStudy; // update the field of study field
-        education.startDate = _startDate; // update the start date field
-        education.endDate = _endDate; // update the end date field
-        UI._education = education;
+    function getTutorTutorials(
+        address _tutorAddress
+    ) external view returns (Tutorial[] memory) {
+        return _tutordetails[_tutorAddress].tutorials;
+    }
+
+    function getTutorInterviewSlots(
+        address _tutorAddress
+    ) external view returns (InterviewSlot[] memory) {
+        return _tutordetails[_tutorAddress].interviewSlots;
     }
 
     // function to check if a user has created a profile on the JobReady App
@@ -306,6 +275,7 @@ contract Job is AccessControl {
     mapping(address => mapping(uint256 => mapping(uint256 => bool))) questionAnswered; //Tracks whether a user has answered a specific question
     mapping(address => mapping(uint256 => uint256)) rightPicked; //Keeps track of the number of questions answered correctly by a user
     mapping(address => mapping(uint256 => string)) feedback;
+    mapping(address => mapping(uint256 => bool)) minted; //check if nft has been minted
 
     //ERRORS
     error QuestionNumAlreadyFilled();
@@ -340,13 +310,17 @@ contract Job is AccessControl {
             Job.Category(_questionType) == _tutordetails[msg.sender].category,
             "!Category"
         );
-        if (questionUploaded[_questionType][_questionNumber] == true)
+        if (questionUploaded[_questionType][_questionNumber] == true) {
             revert QuestionNumAlreadyFilled();
+        }
 
-        if (_options.length < 2) revert QuestionMustHaveAtLeast2Options();
+        if (_options.length < 2) {
+            revert QuestionMustHaveAtLeast2Options();
+        }
 
-        if (_correctOptionIndex > _options.length)
+        if (_correctOptionIndex > _options.length) {
             revert CorrectOptionIDMustBeLessThanOptions();
+        }
 
         questions[_questionType][_questionNumber] = Question(
             _questionText,
@@ -395,17 +369,27 @@ contract Job is AccessControl {
 
         if (
             questionAnswered[msg.sender][_questionType][_questionNumber] == true
-        ) revert QuestionAlreadyAnswered();
+        ) {
+            revert QuestionAlreadyAnswered();
+        }
         if (
             _chosenOptionIndex >
             questions[_questionType][_questionNumber].options.length
-        ) revert ChosenOptionIDMustBeLessThanOptions();
+        ) {
+            revert ChosenOptionIDMustBeLessThanOptions();
+        }
 
         questionAnswered[msg.sender][_questionType][_questionNumber] = true;
         uint256 totalQuestion = totalQuestions[_questionType];
 
-        if (questionAnswered[msg.sender][_questionType][totalQuestion] == true)
+        if (
+            (questionAnswered[msg.sender][_questionType][totalQuestion] ==
+                true) && (minted[msg.sender][_questionType] == false)
+        ) {
             nftAddr.awardUser(msg.sender);
+            minted[msg.sender][_questionType] = true;
+        }
+
         if (
             _chosenOptionIndex ==
             questions[_questionType][_questionNumber].correctOptionIndex
