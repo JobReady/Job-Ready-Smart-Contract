@@ -19,7 +19,7 @@ async function main() {
   console.log("JobReadyNFT address:", jobNFT.address);
 
 
-  const JobReadyContract = await ethers.getContractFactory("JobReady");
+  const JobReadyContract = await ethers.getContractFactory("Job");
   const jobReady = await JobReadyContract.deploy(jobNFT.address);
 
   await jobReady.deployed();

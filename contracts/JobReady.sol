@@ -44,6 +44,8 @@ contract Job is AccessControl {
         string lastName;
         string experience;
         Category category;
+        string occupation;
+        string linkedInURL;
         address tutorAddr;
         Level level;
         bool approve;
@@ -106,6 +108,8 @@ contract Job is AccessControl {
         string calldata _firstName,
         string calldata _lastName,
         string calldata _experience,
+        string calldata _linkedInURL,
+        string calldata _occupation,
         Category _category
     ) external {
         if (hasRegistered[msg.sender] == true) {
@@ -115,6 +119,8 @@ contract Job is AccessControl {
         tutor.firstName = _firstName;
         tutor.lastName = _lastName;
         tutor.tutorAddr = msg.sender;
+        tutor.linkedInURL = _linkedInURL;
+        tutor.occupation = _occupation;
         tutor.category = _category;
         tutor.experience = _experience;
         hasRegistered[msg.sender] = true;
