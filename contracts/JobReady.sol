@@ -36,16 +36,13 @@ contract Job is AccessControl {
         string emailAddress; //not necessary though
         string userFirstName;
         string userLastName;
+        string linkedInURL;
         string[] userSkills; //array of user skill
     }
 
     struct TutorInfo {
-        string firstName;
-        string lastName;
-        string experience;
-        Category category;
         string occupation;
-        string linkedInURL;
+        Category category;
         address tutorAddr;
         Level level;
         bool approve;
@@ -105,24 +102,20 @@ contract Job is AccessControl {
 
     //tutor registration
     function tutorRegistration(
-        string calldata _firstName,
-        string calldata _lastName,
-        string calldata _experience,
-        string calldata _linkedInURL,
         string calldata _occupation,
+        Level _level,
         Category _category
     ) external {
         if (hasRegistered[msg.sender] == true) {
             revert AlreadyRegistered();
         }
         TutorInfo storage tutor = _tutordetails[msg.sender];
-        tutor.firstName = _firstName;
-        tutor.lastName = _lastName;
+
         tutor.tutorAddr = msg.sender;
-        tutor.linkedInURL = _linkedInURL;
+        tutor.level = _level;
         tutor.occupation = _occupation;
         tutor.category = _category;
-        tutor.experience = _experience;
+
         hasRegistered[msg.sender] = true;
     }
 
@@ -152,6 +145,7 @@ contract Job is AccessControl {
         string memory _email,
         string memory _firstName,
         string memory _lastName,
+        string memory _linkedInURL,
         string[] memory _skills
     ) external {
         if (hasRole(USER_ROLE, msg.sender) == true)
@@ -166,6 +160,7 @@ contract Job is AccessControl {
         UI.emailAddress = _email;
         UI.userFirstName = _firstName;
         UI.userLastName = _lastName;
+        UI.linkedInURL = _linkedInURL;
         UI.userSkills = _skills;
 
         _grantRole(USER_ROLE, msg.sender);
