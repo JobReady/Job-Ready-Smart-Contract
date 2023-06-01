@@ -1,13 +1,4 @@
-# Sample Hardhat Project
+# JobReady Contract Addresses
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
-
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
-```
+JobReadyNFT address: 0x6dE8013c2Bfb704Cc5cbbB08A728d6f6Df5Bb1Ff
+JobReady Contract Address 0xCfC2727BC7ecfb6B2fC54B5aC764C7338d277D10
